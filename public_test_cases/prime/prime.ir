@@ -1,0 +1,70 @@
+#start_function
+int divisible(int x, int y):
+int-list: d
+float-list:
+    div, d, x, y
+    mult, d, d, y
+    brneq, label0, x, d
+    return, 1
+label0:
+    return, 0
+#end_function
+
+#start_function
+void main():
+int-list: n, i, r, a, b, c, t, s, ti, r0, t0, t1, t2, rr
+float-list:
+    assign, i, 0
+    assign, a, 2
+    assign, b, 3
+    assign, c, 6
+    assign, r0, 0
+    callr, n, geti
+    brgt, label0, n, 1
+    assign, r, 0
+    assign, rr, r
+    goto, print
+label0:
+    brgt, label1, n, 3
+    assign, r, 1
+    assign, rr, r
+    goto, print
+label1:
+    callr, t, divisible, n, a
+    assign, r, r0
+    assign, rr, r
+    breq, label2, t, 1
+    callr, t, divisible, n, b
+    assign, r, r0
+    assign, rr, r
+    breq, label2, t, 1
+    goto, label3
+label2:
+    goto, print
+label3:
+    assign, i, 5
+loop:
+    mult, s, i, i
+    brgt, exit, s, n
+    callr, t, divisible, n, i
+    assign, r, r0
+    assign, t0, 0
+    assign, t2, 0
+    assign, rr, r
+    breq, label2, t, 1
+    add, ti, i, 2
+    callr, t, divisible, n, ti
+    assign, r, r0
+    assign, rr, r
+    breq, label2, t, 1
+    add, i, i, 6
+    goto, loop
+exit:
+    assign, t1, t0
+    assign, r, t2
+    assign, r, 1
+    assign, rr, r
+print:
+    call, puti, rr
+    call, putc, 10
+#end_function
