@@ -98,18 +98,6 @@ public class IRInstruction {
         return useSet;
     }
 
-    public Integer[] getLiveRange() {
-        int maxUseLine = 0;
-        for(String use : this.getUseSet()) {
-            Integer useLine = Integer.valueOf(use.substring(3, use.indexOf("(")));
-            if (useLine > maxUseLine) {
-                maxUseLine = useLine;
-            }
-        }
-        Integer[] out = {this.irLineNumber, maxUseLine};
-        return out;
-    } 
-
     public IROperand getDefOperand() {
         if (isDefinitionOp(this.opCode)) {
             if (this.opCode == OpCode.ARRAY_STORE) {
@@ -129,7 +117,7 @@ public class IRInstruction {
         }
         return out;
     }
-    private static boolean isDefinitionOp(OpCode opCode) {
+   private static boolean isDefinitionOp(OpCode opCode) {
         return opCode == OpCode.ADD || opCode == OpCode.SUB ||
                 opCode == OpCode.MULT || opCode == OpCode.DIV ||
                 opCode == OpCode.AND || opCode == OpCode.OR ||
