@@ -3,6 +3,7 @@ package ir;
 import ir.datatype.IRType;
 import ir.operand.IRVariableOperand;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class IRFunction {
@@ -16,6 +17,8 @@ public class IRFunction {
     public List<IRVariableOperand> variables;
 
     public List<IRInstruction> instructions;
+
+    public List<IRInstruction> worklist = new ArrayList<IRInstruction>();
 
     public IRFunction(String name, IRType returnType,
                       List<IRVariableOperand> parameters, List<IRVariableOperand> variables,
