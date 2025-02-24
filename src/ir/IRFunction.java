@@ -29,4 +29,9 @@ public class IRFunction {
         this.variables = variables;
         this.instructions = instructions;
     }
+
+    public IRInstruction getInstruction(int lineNo) {
+        int start = this.instructions.get(0).irLineNumber;
+        return this.instructions.get(lineNo - start);
+    }
 }

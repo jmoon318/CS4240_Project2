@@ -22,4 +22,13 @@ public abstract class IROperand {
         return value;
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof IROperand) {
+            IROperand otherOp = (IROperand) other;
+            return this.value.equals(otherOp.value);
+        }
+        return false;
+    }
+
 }

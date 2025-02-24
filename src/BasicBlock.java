@@ -25,6 +25,9 @@ public class BasicBlock {
     // outSet done the same way
     public HashMap<String, ArrayList<Integer>> outSet;
     public HashMap<String, ArrayList<Integer>> inSet;
+    private IRFunction func;
+    private ArrayList<IROperand> liveIn;
+    private ArrayList<IROperand> liveOut;
 
     public BasicBlock(int blockID, int startLine, int endLine) {
         this.blockID = blockID;
@@ -46,6 +49,7 @@ public class BasicBlock {
      * @param func IR function object from IRReader
      */
     public BasicBlock(IRFunction func, HashMap<Integer, IRInstruction> defmap) {
+        this.func = func;
         ArrayList<Integer> startLineNos = new ArrayList<>();
         ArrayList<Integer> endLineNos = new ArrayList<>();
         this.instructions = new ArrayList<>();
@@ -356,6 +360,70 @@ public class BasicBlock {
 
     public InterferenceGraph getIGraph() {
         return new InterferenceGraph(this);
+    }
+
+    public ArrayList<IROperand> getUEVars() {
+        ArrayList<IROperand> out = new ArrayList<IROperand>();
+        for (IRInstruction instr : this.instructions) {
+            for (String usedDef : instr.getUseSet()) {
+                int defLine = Integer.valueOf(usedDef.substring(3, usedDef.indexOf("(")));
+                if (defLine < this.startLine) {
+                    IROperand uevar = this.func.getInstruction(defLine).getDefOperand();
+                    out.add(uevar);
+                }
+            }
+        }
+        return out;
+    }
+    
+    // computes the LiveIn set returns the updated set
+    public ArrayList<IROperand> computeLiveOut() {
+        ArrayList<IROperand> out = new ArrayList<IROperand>();
+        for (BasicBlock successor : this.next) {
+            out.addAll(successor.getLiveIn());
+        }
+        this.liveOut = out;
+        return this.liveOut;
+    }
+
+    // gets the LiveOut set without modification
+    public ArrayList<IROperand> getLiveOut(){
+        return this.liveOut;
+    }
+
+    // computes the LiveIn set returns the updated set
+    public ArrayList<IROperand> computeLiveIn() {
+        ArrayList<IROperand> out = new ArrayList<IROperand>();
+        out.addAll(this.getUEVars());
+
+        @SuppressWarnings("unchecked") // we know that liveOut is the same type of arraylist
+        // we want to get a clone as to not change the current state of liveOut
+        ArrayList<IROperand> liveOut = (ArrayList<IROperand>) this.liveOut.clone();
+        for (IRInstruction killInstr: this.getKillInstructions()) {
+            // remove operands that are in this block's kill set
+            liveOut.remove(killInstr.getDefOperand());
+        }
+        out.addAll(liveOut);
+        this.liveIn = out;
+        return this.liveIn;
+    }
+
+    // gets the LiveIn set without modification
+    public ArrayList<IROperand> getLiveIn(){
+        return this.liveIn;
+    }
+
+    // returns a list of instructions in this block that contribute to the kill set
+    public ArrayList<IRInstruction> getKillInstructions() {
+        ArrayList<IRInstruction> out = new ArrayList<IRInstruction>();
+        for (String killVar : this.killSet.keySet()) {
+            for (IRInstruction instr : this.instructions) {
+                if (instr.getDefOperand().toString().equals(killVar)) {
+                    out.add(instr);
+                }
+            }
+        }
+        return out;
     }
 
     public void printBlockSets(BasicBlock block) {

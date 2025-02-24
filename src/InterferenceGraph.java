@@ -58,6 +58,15 @@ public class InterferenceGraph {
                     maxUseLine = otherInstr.irLineNumber;
                 }
             }
+            if (otherInstr.gen && 
+                otherInstr.getDefOperand().toString().equals(instr.getDefOperand().toString()) && 
+                otherInstr.irLineNumber > instr.irLineNumber) {
+                // if the other instruction defines the same register as the passed instruction
+                // and it is on a later line than this instruction then we have found the limit of this
+                // instruction's live range.
+                maxUseLine = otherInstr.irLineNumber;
+                break;
+            }
         }
         Integer[] out = {instr.irLineNumber, maxUseLine};
         return out;
