@@ -1,29 +1,34 @@
 import java.util.ArrayList;
 import java.util.EmptyStackException;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.Stack;
 
 import ir.IRInstruction;
+import ir.operand.IRVariableOperand;
 
 public class InterferenceGraph {
     public class InstrVertex {
         IRInstruction instruction;
         ArrayList<IRInstruction> edges;
-        int color;
     }
     ArrayList<InstrVertex> vertices;
+    HashMap<String, ArrayList<Integer>> liveRanges;
     public InterferenceGraph(BasicBlock block) {
+        this.liveRanges = new HashMap<String, ArrayList<Integer>>();
         this.vertices = new ArrayList<InstrVertex>();
 
         for (IRInstruction instr : block.instructions) {
             // setup
+            if (instr.getDefOperand() instanceof IRVariableOperand) {
+                liveRanges.put(instr.getDefOperand().toString(), new ArrayList<Integer>());
+            }
             InstrVertex vertex = new InstrVertex();
             vertex.instruction = instr;
             vertex.edges = new ArrayList<IRInstruction>();
             // colors will start at 0, for now no color.
-            vertex.color = -1;
 
-            Integer[] liveRange = getLiveRange(instr, block);
+            ArrayList<Integer> liveRange = getLiveRange(instr, block);
             // we now have the biggest line # of where this instr def is used
             // this might be useful for building Live Out set as well
             for (IRInstruction otherInstr : block.instructions) {
@@ -39,12 +44,28 @@ public class InterferenceGraph {
     }
 
     // range[0] is the start of the range and range[1] is the end
-    private boolean overlap(Integer[] range1, Integer[] range2) {
+    private boolean overlap(ArrayList<Integer> range1, ArrayList<Integer> range2) {
         // if range 2 starts after range 1 ends or vice versa descriobes all situations without overlap (i think at 11pm)
-        return !(range1[1] <= range2[0] || range1[0] >= range2[1]); 
+        for (int i = 0; i < range1.size(); i += 2) {
+            int r1Start = range1.get(i);
+            int r1End = range1.get(i + 1);
+            for (int j = 0; j < range2.size(); j += 2) {
+                int r2Start = range2.get(j);
+                int r2End = range2.get(j + 1);
+                // range 2 start is between range 1 start and end or
+                if ((r1Start < r2Start  && r1End > r1Start) ||
+                // range 2 end is between range 1 start and end or
+                    (r1Start < r2End && r1End > r2End) ||
+                // range 1 is entirely contained by range 2
+                    (r1Start > r2Start && r1End < r2End)) {
+                        return true;
+                }
+            }
+        }
+        return false;
     }
 
-    public Integer[] getLiveRange(IRInstruction instr, BasicBlock block) {
+    public ArrayList<Integer> getLiveRange(IRInstruction instr, BasicBlock block) {
         int instrLine = instr.irLineNumber;
         int maxUseLine = instrLine;
         // for each of the other instructions in the block
@@ -68,67 +89,43 @@ public class InterferenceGraph {
                 break;
             }
         }
-        Integer[] out = {instr.irLineNumber, maxUseLine};
-        return out;
+        this.liveRanges.get(instr.getDefOperand().toString()).add(instr.irLineNumber);
+        this.liveRanges.get(instr.getDefOperand().toString()).add(maxUseLine);
+        return liveRanges.get(instr.getDefOperand().toString());
     }
     
-    public ArrayList<InstrVertex> cBriggsColor() {
-        Stack<InstrVertex> stack = new Stack<InstrVertex>();
-        InstrVertex vert = null;
-
-        while (this.vertices.size() > 0) {
-            // if the graph has no vertices with degree < 10
-            // step 2 in lec11 slides
-            if (getDegVertex() == null) {
-                vert = getRandVertex();
-                stack.push(vert);
-                this.rmVertex(vert);
+    // returns a map of String var name to integer register assignment
+    // 0-9 coorespond to t0 - t9, and 10 means the variable is spilled
+    public HashMap<String, Integer> getRegMap() {
+        HashMap<String, Integer> out = new HashMap<String, Integer>();
+        
+        HashMap<String, Integer> rangeLens = new HashMap<String, Integer>();
+        for (String var : this.liveRanges.keySet()) {
+            ArrayList<Integer> live = this.liveRanges.get(var);
+            int rangeSize = 0;
+            for (int i = 0; i < live.size(); i += 2) {
+                rangeSize += (live.get(i - 1) - live.get(i));
             }
-            // step 1 in lec11 slides
-            while ((vert = this.getDegVertex()) != null) {
-                stack.push(vert);
-                this.rmVertex(vert);
-            }
-            // when the above while loop breaks we either have no vertices with degreee < 10
-            // or the graph is now empty
+            rangeLens.put(var, rangeSize);
         }
-        while (true) {
-            try {
-                // pop an instruction off the top of the stack
-                InstrVertex vertex = stack.pop();
-
-                // attempt to add it back with the lowest color
-                int i = 0;
-                while (!addWithColor(vertex, i++));
-            }
-            // once the stack is empty, break the loop.
-            catch (EmptyStackException e) {
-                break;
+        // now our rangeLens hashmap has each var to the range size
+        // assign each of 10 registers (0-9) to the largest range sizes
+        for (int i = 0; i < 10; i ++) {
+            int highest = 0;
+            for (String var : rangeLens.keySet()) {
+                if (rangeLens.get(var) > highest) {
+                    // add to our output
+                    out.put(var, i);
+                    // remove from our working list
+                    rangeLens.remove(var);
+                }
             }
         }
-        // this.verticies should now hold verticies with the appropriate color
-        return this.vertices;
-    }
-
-    // returns false if a neighbor already has this color, returns true if a color was assigned
-    // and the vertex was added back to the graph
-    private boolean addWithColor(InstrVertex vertex, Integer color) {
-        for (InstrVertex v : this.vertices) {
-            // if we find a neighbor (shared edge) that has been added back with the same color
-            // return false
-            if (vertex.edges.contains(v.instruction) && v.color == color) {
-                return false;
-            }
+        // assign the register #10 to the remaining variables, these will be spilled
+        for (String var : rangeLens.keySet()) {
+            out.put(var, 10);
         }
-        vertex.color = color;
-        this.vertices.add(vertex);
-        // make sure we add the edges to this vertex back
-        for (InstrVertex v : this.vertices) {
-            if (vertex.edges.contains(v.instruction)) {
-                v.edges.add(vertex.instruction);
-            }
-        }
-        return true;
+        return out;
     }
 
     // we will only have 10 registers (colors) to use
@@ -163,11 +160,10 @@ public class InterferenceGraph {
 
     @Override
     public String toString(){
-        this.vertices = this.cBriggsColor();
         String out = "INTERFERENCE GRAPH:\n";
         for (InstrVertex v : this.vertices) {
             out += "  VERTEX:\n";
-            out += "  " + v.instruction.toString() + " COLOR: " + v.color + "\n";
+            out += "  " + v.instruction.toString() + "\n";
             out += "    EDGES:\n";
             for (IRInstruction edge : v.edges) {
                 out += "    - " + edge.toString() + "\n";

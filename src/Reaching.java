@@ -41,7 +41,6 @@ public class Reaching {
                     // System.out.println("Instruction at Line " + instr.irLineNumber +
                     //         " uses Defs: " + instr.getUseSet());
                 }
-                System.out.println(block.getIGraph().toString());
             }
             ArrayList<Integer> keepLines = markLines(func);
             IRFunction optimizedFunction = optimize(func, keepLines);

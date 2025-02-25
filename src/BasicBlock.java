@@ -26,8 +26,8 @@ public class BasicBlock {
     public HashMap<String, ArrayList<Integer>> outSet;
     public HashMap<String, ArrayList<Integer>> inSet;
     private IRFunction func;
-    private ArrayList<IROperand> liveIn;
-    private ArrayList<IROperand> liveOut;
+    private Set<String> liveIn;
+    private Set<String> liveOut;
 
     public BasicBlock(int blockID, int startLine, int endLine) {
         this.blockID = blockID;
@@ -40,6 +40,8 @@ public class BasicBlock {
         this.killSet = new HashMap<>();
         this.inSet = new HashMap<>();
         this.outSet = new HashMap<>();
+        this.liveIn = new HashSet<String>();
+        this.liveOut = new HashSet<String>();
     }
 
     /**
@@ -98,6 +100,7 @@ public class BasicBlock {
             int startLine = startLineNos.get(i);
             int endLine = endLineNos.get(i);
             BasicBlock newBlock = new BasicBlock(blockID, startLine, endLine);
+            newBlock.func = this.func;
             // System.out.println("start nos: " + startLineNos + "\nand end: " + endLineNos);
             // System.out.println("new block with start: " + startLine + "\nand end: " + endLine);
 
@@ -362,46 +365,57 @@ public class BasicBlock {
         return new InterferenceGraph(this);
     }
 
-    public ArrayList<IROperand> getUEVars() {
-        ArrayList<IROperand> out = new ArrayList<IROperand>();
+    public Set<String> getUEVars() {
+        HashSet<String> out = new HashSet<String>();
         for (IRInstruction instr : this.instructions) {
             for (String usedDef : instr.getUseSet()) {
+                //System.out.println("used def: " + usedDef);
                 int defLine = Integer.valueOf(usedDef.substring(3, usedDef.indexOf("(")));
                 if (defLine < this.startLine) {
                     IROperand uevar = this.func.getInstruction(defLine).getDefOperand();
-                    out.add(uevar);
+                    out.add(uevar.toString());
+                }
+            }
+            for (IROperand operand : instr.operands) {
+                if (operand instanceof IRVariableOperand && !defBefore(operand.toString(), instr.irLineNumber)) {
+                    out.add(operand.toString());
                 }
             }
         }
+        //System.out.println("got uevars: " + out);
         return out;
     }
     
     // computes the LiveIn set returns the updated set
-    public ArrayList<IROperand> computeLiveOut() {
-        ArrayList<IROperand> out = new ArrayList<IROperand>();
+    public Set<String> computeLiveOut() {
+        HashSet<String> out = new HashSet<String>();
         for (BasicBlock successor : this.next) {
-            out.addAll(successor.getLiveIn());
+            for (String var : successor.getLiveIn()) {
+                out.add(var);
+            }
         }
         this.liveOut = out;
         return this.liveOut;
     }
 
     // gets the LiveOut set without modification
-    public ArrayList<IROperand> getLiveOut(){
+    public Set<String> getLiveOut(){
         return this.liveOut;
     }
 
     // computes the LiveIn set returns the updated set
-    public ArrayList<IROperand> computeLiveIn() {
-        ArrayList<IROperand> out = new ArrayList<IROperand>();
+    public Set<String> computeLiveIn() {
+        HashSet<String> out = new HashSet<String>();
         out.addAll(this.getUEVars());
-
+        for (String var : this.getUEVars()) {
+            out.add(var);
+        }
         @SuppressWarnings("unchecked") // we know that liveOut is the same type of arraylist
         // we want to get a clone as to not change the current state of liveOut
-        ArrayList<IROperand> liveOut = (ArrayList<IROperand>) this.liveOut.clone();
+        HashSet<String> liveOut = cloneSet(this.liveOut);
         for (IRInstruction killInstr: this.getKillInstructions()) {
             // remove operands that are in this block's kill set
-            liveOut.remove(killInstr.getDefOperand());
+            liveOut.remove(killInstr.getDefOperand().toString());
         }
         out.addAll(liveOut);
         this.liveIn = out;
@@ -409,7 +423,7 @@ public class BasicBlock {
     }
 
     // gets the LiveIn set without modification
-    public ArrayList<IROperand> getLiveIn(){
+    public Set<String> getLiveIn(){
         return this.liveIn;
     }
 
@@ -424,6 +438,24 @@ public class BasicBlock {
             }
         }
         return out;
+    }
+
+    public static HashSet<String> cloneSet(Set<String> set) {
+        HashSet<String> out = new HashSet<String>();
+        for (String e : set) {
+            out.add(e);
+        }
+        return out;
+    }
+
+    public boolean defBefore(String var, int lineNo) {
+        lineNo -= 1;
+        while (lineNo >= this.startLine) {
+            if (var.equals(this.func.getInstruction(lineNo--).getDefOperand().toString())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void printBlockSets(BasicBlock block) {
@@ -454,6 +486,26 @@ public class BasicBlock {
         //System.out.print(" }\n");
     }
 
+    // takes a map of String variable names to Integer stack ptr offset 
+    public String makeNaiveASM(HashMap<String, Integer> stackMap) {
+        // run our instruction selection algorithm
 
+        // each time a variable is used/read we must retrieve it from the stack
+        // each time a variable is written/defed we must store it to the stack
+        // use the stack map to determine where the variables are stored in relation to $sp
+    }
+
+    public String makeGreedyASM(HashMap<String, Integer> stackMap, InterferenceGraph iGraph) {
+        // start by adding the code to load in the LiveIn variables from stack to registers
+        // the register assignments can be obtained from the interference graph with `iGraph.getRegMap()`
+        // this gives a HashMap<String, Integer> where the String is the variable name and Integer is the
+        // coorespoding register t0-t9. If the integer is 10 then this is spilled.
+
+        // run instruction selection, making sure that the appropriate variables are replaced
+        // with the cooresponding registers loaded with LiveIn.
+        // Variables that overflow/spill will use the same load/store logic as the naive approach.
+
+        // store the LiveOut variables to their locations on the stack
+    }
 
 }
