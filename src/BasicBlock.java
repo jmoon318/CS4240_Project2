@@ -378,8 +378,7 @@ public class BasicBlock {
             }
             for (IROperand operand : instr.getUsedVars()) {
                 if (operand instanceof IRVariableOperand && 
-                    !defBefore(operand.toString(), instr.irLineNumber) /*&&
-                    !operand.equals(instr.getDefOperand()*/) {
+                    !defBefore(operand.toString(), instr.irLineNumber)) {
 
                     out.add(operand.toString());
                 }
@@ -410,7 +409,6 @@ public class BasicBlock {
     public Set<String> computeLiveIn() {
         HashSet<String> out = new HashSet<String>();
         out.addAll(this.getUEVars());
-        @SuppressWarnings("unchecked") // we know that liveOut is the same type of arraylist
         // we want to get a clone as to not change the current state of liveOut
         HashSet<String> liveOut = cloneSet(this.liveOut);
         for (IRInstruction killInstr: this.getKillInstructions()) {
@@ -502,7 +500,10 @@ public class BasicBlock {
     }
 
     public String makeGreedyASM(HashMap<String, Integer> stackMap, InterferenceGraph iGraph) {
-        // start by adding the code to load in the LiveIn variables from stack to registers
+        // start by adding the code to load in the LiveIn variables from stack to registers.
+        // I think that if a variable doesn't appear in any of the livein/out sets then its an internal
+        // value to that BB and does not need space on the stack.
+
         // the register assignments can be obtained from the interference graph with `iGraph.getRegMap()`
         // this gives a HashMap<String, Integer> where the String is the variable name and Integer is the
         // coorespoding register t0-t9. If the integer is 10 then this is spilled.
