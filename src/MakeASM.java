@@ -30,6 +30,12 @@ public class MakeASM {
             BasicBlock head = new BasicBlock(func, varDefReachMap);
             Reaching.computeUseSet(head.getBlockList(), varDefReachMap);
             buildLiveSets(head);
+            System.out.println("block list: " + head.getBlockList());
+            for (BasicBlock b : head.getBlockList()) {
+                System.out.println("BB starting at line " + b.startLine + " and ending at line "+ b.endLine);
+                System.out.println("LiveIn: " + b.getLiveIn());
+                System.out.println("LiveOut: " + b.getLiveOut());
+            }
             String funcASM = makeNaiveASM(head, func);
         }
     }
@@ -44,7 +50,7 @@ public class MakeASM {
         // variable names.
         
         // and at the end add the calling convention for returning, restoring any saved registers
-        return;
+        return null;
     }
 
     public static String makeGreedyASM(BasicBlock head, IRFunction func) {
@@ -57,7 +63,7 @@ public class MakeASM {
         // variable names.
         
         // and at the end add the calling convention for returning, restoring any saved registers
-        return;
+        return null;
     }
 
     // takes the head of a function's CFG and computes the LiveIn/Out sets for each BB
@@ -66,14 +72,14 @@ public class MakeASM {
         @SuppressWarnings("unchecked") // we know what the return type is
         ArrayList<BasicBlock> worklist = (ArrayList<BasicBlock>) head.getBlockList().clone();
         while (worklist.size() > 0) {
-            BasicBlock block = worklist.get(0);
-            worklist.remove(0);
+            BasicBlock block = worklist.remove(0);
 
 
             // we want to make sure that this list is not updated when computing the new one on the block
             Set<String> oldLiveIn = BasicBlock.cloneSet(block.getLiveIn());
-            block.computeLiveOut();
+            System.out.println("iteration liveout @ " + block.startLine + ": "+ block.computeLiveOut());
             Set<String> newLiveIn = block.computeLiveIn();
+            System.out.println("iteration livein block @ " + block.startLine + ": " + newLiveIn);
             // if the LiveIn changed then add predecessors to the worklist.
             if (!newLiveIn.equals(oldLiveIn)) {
                 worklist.addAll(block.pre);

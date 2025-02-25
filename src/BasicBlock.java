@@ -376,13 +376,16 @@ public class BasicBlock {
                     out.add(uevar.toString());
                 }
             }
-            for (IROperand operand : instr.operands) {
-                if (operand instanceof IRVariableOperand && !defBefore(operand.toString(), instr.irLineNumber)) {
+            for (IROperand operand : instr.getUsedVars()) {
+                if (operand instanceof IRVariableOperand && 
+                    !defBefore(operand.toString(), instr.irLineNumber) /*&&
+                    !operand.equals(instr.getDefOperand()*/) {
+
                     out.add(operand.toString());
                 }
             }
         }
-        //System.out.println("got uevars: " + out);
+        System.out.println("got uevars: " + out + " start @ " + this.startLine);
         return out;
     }
     
@@ -407,9 +410,6 @@ public class BasicBlock {
     public Set<String> computeLiveIn() {
         HashSet<String> out = new HashSet<String>();
         out.addAll(this.getUEVars());
-        for (String var : this.getUEVars()) {
-            out.add(var);
-        }
         @SuppressWarnings("unchecked") // we know that liveOut is the same type of arraylist
         // we want to get a clone as to not change the current state of liveOut
         HashSet<String> liveOut = cloneSet(this.liveOut);
@@ -455,6 +455,11 @@ public class BasicBlock {
                 return true;
             }
         }
+        //for (IRVariableOperand varOperand : this.func.parameters) {
+        //    if (varOperand.toString().equals(var)) {
+        //        return true;
+        //    }
+        //}
         return false;
     }
 
@@ -493,6 +498,7 @@ public class BasicBlock {
         // each time a variable is used/read we must retrieve it from the stack
         // each time a variable is written/defed we must store it to the stack
         // use the stack map to determine where the variables are stored in relation to $sp
+        return null;
     }
 
     public String makeGreedyASM(HashMap<String, Integer> stackMap, InterferenceGraph iGraph) {
@@ -506,6 +512,7 @@ public class BasicBlock {
         // Variables that overflow/spill will use the same load/store logic as the naive approach.
 
         // store the LiveOut variables to their locations on the stack
+        return null;
     }
 
 }

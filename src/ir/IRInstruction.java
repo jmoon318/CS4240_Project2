@@ -107,7 +107,18 @@ public class IRInstruction {
             }
         }
         return this.operands[0];
-    }   
+    } 
+    
+    public ArrayList<IROperand> getUsedVars() {
+        ArrayList<IROperand> out = new ArrayList<IROperand>();
+        // TODO may need to rethink this for ARRAY ops
+        for (int i = 1; i < this.operands.length; i++) {
+            if (this.operands[i] instanceof IRVariableOperand) {
+                out.add(this.operands[i]);
+            }
+        }
+        return out;
+    }
 
     @Override
     public String toString() {
