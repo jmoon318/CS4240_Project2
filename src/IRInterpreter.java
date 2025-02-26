@@ -147,6 +147,7 @@ public class IRInterpreter {
 
         while (true) {
             IRInstruction instruction = pc.next();
+            System.out.println("execute instruction on line: " + instruction.irLineNumber + " operation: " + instruction.opCode.toString());
             executeInstruction(instruction);
 
             if (!pc.hasNext()) {
