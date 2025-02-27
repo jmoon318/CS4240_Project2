@@ -15,6 +15,7 @@ public class InterferenceGraph {
     ArrayList<InstrVertex> vertices;
     HashMap<String, ArrayList<Integer>> liveRanges;
     public InterferenceGraph(BasicBlock block) {
+        // even indecies of the arraylist are the start of a range and odd ones are the end
         this.liveRanges = new HashMap<String, ArrayList<Integer>>();
         this.vertices = new ArrayList<InstrVertex>();
 
