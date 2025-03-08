@@ -14,8 +14,10 @@ src/ir/IRReader.java
 src/ir/IRPrinter.java
 src/ir/IRException.java
 src/IRInterpreter.java
+src/NaiveAllocator.java
 src/InterferenceGraph.java
 src/MakeASM.java
 src/BasicBlock.java
 src/Reaching.java
 src/Demo.java
+src/assembly.java

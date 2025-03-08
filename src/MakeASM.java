@@ -1,3 +1,4 @@
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +15,13 @@ public class MakeASM {
         IRReader irReader = new IRReader();
         IRProgram program = irReader.parseIRFile(args[0]);
         IRProgram optimizedProgram = new IRProgram();
+
+        PrintStream fileOut = new PrintStream(System.out);
+        NaiveAllocator allocator = new NaiveAllocator(fileOut);
+        allocator.NaivePrintProgram(program);
+        fileOut.close();
+
+
         for (IRFunction func : program.functions) {
             // System.out.println("Map for function: " + func.name);
             //build the def/reach map for the whole function
@@ -36,7 +44,8 @@ public class MakeASM {
                 System.out.println("LiveIn: " + b.getLiveIn());
                 System.out.println("LiveOut: " + b.getLiveOut());
             }
-            String funcASM = makeNaiveASM(head, func);
+            String greedyASM = makeGreedyASM(head, func);
+
         }
     }
 
