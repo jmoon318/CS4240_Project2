@@ -70,6 +70,13 @@ public class NaiveAllocator {
         
         for (IRFunction function : program.functions) {
             printFunction(function);
+            if (function.name.equals("main")) {
+                ps.println("    li $v0, 10");
+                ps.println("    syscall");
+            } else {
+                ps.println("    jr $ra");
+
+            }
             ps.println();
         }
     }
@@ -86,7 +93,7 @@ public class NaiveAllocator {
         for (IRVariableOperand param : function.parameters) {
             paramNames.add(param.getName());
             stackMap.put(param.getName(), fp_offset);
-            // System.out.println("param: " + param.getName() + " has offset: " + fp_offset);            
+            //System.out.println("param: " + param.getName() + " has offset: " + fp_offset);            
             fp_offset += 4;
             arg_size += 4;
         }
@@ -97,7 +104,7 @@ public class NaiveAllocator {
         
             local_size += 4;
             stackMap.put(variable.getName(), fp_offset);
-            //System.out.println("param: " + variable.getName() + " has offset: " + fp_offset);
+            //System.out.println("var: " + variable.getName() + " has offset: " + fp_offset);
             fp_offset += 4;
         }
         
@@ -111,7 +118,7 @@ public class NaiveAllocator {
         ps.println("    sw   $fp, 0($sp)");
         ps.println("    move $fp, $sp");
 
-        int argOffset = function.parameters.size() * 4;
+        int argOffset = (function.parameters.size() - 4) * 4;
         for (int i = 0; i < function.parameters.size(); i++) {
             int offset = stackMap.get(function.parameters.get(i).getName());
             if (i < 4) {
@@ -134,10 +141,11 @@ public class NaiveAllocator {
         // sbrk for array().
         // store address at local stack offset
         for (IRVariableOperand var : function.variables) {
-            if (var.type instanceof IRArrayType) {
+            //System.out.println(var.getName());
+            if (var.type instanceof IRArrayType && !function.parameters.contains(var)) {
                 IRArrayType arr = (IRArrayType) var.type;
                 ps.println("    li $v0, 9");
-                ps.println("    li $a0, " + arr.getSize());
+                ps.println("    li $a0, " + (arr.getSize() * 4) + 4);
                 ps.println("    syscall");
                 ps.println("    sw $v0, -" + stackMap.get(var.getName()) + "($fp)");
             }
@@ -304,22 +312,30 @@ public class NaiveAllocator {
                 // regular fucntion call 
                 } else {
                     // arg handling
-                    
-                    // need to count args for each function in a program
                     int stackArgOffset = 0 ;
-                    for (int i = 1; i < operands.length; i++) {
-                        args.add(operands[i].getValue());
-                    }
-                    
+
+                    //System.out.println("ARGS SIZE + " + args.size() + ", OPERANDS SIZE = " + operands.length);
                     for (int i = 0; i < args.size(); i++) {
-                        int offset = stackMap.getOrDefault(args.get(i),0);
+                        int offset = stackMap.getOrDefault(args.get(i), -1);
                         if (i < 4) {
-                            ps.println("    lw $a" + i + ", -" + offset + "($fp)");
+                            if (offset == -1) {
+                                ps.println("    li $a" + i + ", " + args.get(i));    
+                            } else {
+                                ps.println("    lw $a" + i + ", -" + offset + "($fp)");
+                            }
                         } else {
-                            int stackOffset = (i - 4) * 4;
-                            ps.println("    lw $t0, -" + offset + "($fp)");  
-                            ps.println("    sw $t0, " + stackOffset + "($sp)");
-                            stackArgOffset += 4;
+                            if (offset == -1) {
+                                int stackOffset = (i - 3) * 4;
+                                ps.println("    li $t0, " + args.get(i));
+                                ps.println("    sw $t0, -" + stackOffset + "($sp)");
+                                stackArgOffset += 4;
+
+                            } else {
+                                int stackOffset = (i - 3) * 4;
+                                ps.println("    lw $t0, -" + offset + "($fp)");  
+                                ps.println("    sw $t0, -" + stackOffset + "($sp)");
+                                stackArgOffset += 4;
+                            }
                         }
                     }
 
@@ -364,7 +380,7 @@ public class NaiveAllocator {
 
                 ps.println("    lw $t1, -" + arr_addr_off + "($fp)");
                 ps.println("    sll $t2, $t2, 2");
-                ps.println("    add $t2, $t2, $t1");
+                ps.println("    add $t1, $t2, $t1");
                 ps.println("    sw $t0, 0($t1)");
                 break;
 
