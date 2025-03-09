@@ -1,0 +1,207 @@
+.data
+ti: .word 0
+tj: .word 0
+j1: .word 0
+x: .word 0
+mid: .word 0
+pivot: .word 0
+i: .word 0
+j: .word 0
+t: .word 0
+i: .word 0
+n: .word 0
+ 
+.text
+quicksort:
+    li $t0, 0
+    sw $t0, i
+
+    li $t1, 0
+    sw $t1, j
+
+    lw $t2, lo
+    lw $t3, hi
+    bge $t2, $t3, end
+
+    lw $t2, lo
+    lw $t3, hi
+    add $t4, $t2, $t3
+    sw $t4, mid
+
+    lw $t4, mid
+    li $t5, 2
+    div $t4, $t4, $t5
+    sw $t4, mid
+
+    lw $t4, mid
+    sll $t4, $t4, 2
+    add $t4, $t4, A
+    lw $t6, 0($t4)
+    sw $t6, pivot
+
+    lw $t2, lo
+    li $t7, 1
+    sub $t0, $t2, $t7
+    sw $t0, i
+
+    lw $t3, hi
+    li $t7, 1
+    add $t1, $t3, $t7
+    sw $t1, j
+
+loop0:
+loop1:
+    lw $t0, i
+    li $t7, 1
+    add $t0, $t0, $t7
+    sw $t0, i
+
+    lw $t0, i
+    sll $t0, $t0, 2
+    add $t0, $t0, A
+    lw $t8, 0($t0)
+    sw $t8, x
+
+    lw $t9, x
+    sw $t9, ti
+
+    lw $t9, ti
+    lw $t6, pivot
+    blt $t9, $t6, loop1
+
+loop2:
+    lw $t1, j
+    li $t7, 1
+    sub $t1, $t1, $t7
+    sw $t1, j
+
+    lw $t1, j
+    sll $t1, $t1, 2
+    add $t1, $t1, A
+    lw $t8, 0($t1)
+    sw $t8, x
+
+    lw $t10, x
+    sw $t10, tj
+
+    lw $t10, tj
+    lw $t6, pivot
+    bgt $t10, $t6, loop2
+
+    lw $t0, i
+    lw $t1, j
+    bge $t0, $t1, exit0
+
+    lw $t11, A
+    lw $t1, j
+    sll $t11, $t11, 2
+    add $t11, $t11, ti
+    sw $t1, 0($t11)
+
+    lw $t11, A
+    lw $t0, i
+    sll $t11, $t11, 2
+    add $t11, $t11, tj
+    sw $t0, 0($t11)
+
+    j loop0
+
+exit0:
+    lw $t1, j
+    li $t7, 1
+    add $t12, $t1, $t7
+    sw $t12, j1
+
+
+    lw $t1, j
+    li $t7, 1
+    add $t1, $t1, $t7
+    sw $t1, j
+
+
+end:
+    # Exit program
+    li $v0, 10
+    syscall
+
+main:
+    li $t13, 0
+    sw $t13, t
+
+    li $v0, 5
+    syscall
+    move $t14, $v0
+    sw $t14, n
+
+    lw $t14, n
+    li $t15, 100
+    bgt $t14, $t15, return
+
+    lw $t14, n
+    li $t7, 1
+    sub $t14, $t14, $t7
+    sw $t14, n
+
+    li $t0, 0
+    sw $t0, i
+
+loop0:
+    lw $t0, i
+    lw $t14, n
+    bgt $t0, $t14, exit0
+
+    li $v0, 5
+    syscall
+    move $t13, $v0
+    sw $t13, t
+
+    lw $t11, A
+    lw $t0, i
+    sll $t11, $t11, 2
+    add $t11, $t11, t
+    sw $t0, 0($t11)
+
+    lw $t0, i
+    li $t7, 1
+    add $t0, $t0, $t7
+    sw $t0, i
+
+    j loop0
+
+exit0:
+
+    li $t0, 0
+    sw $t0, i
+
+loop1:
+    lw $t0, i
+    lw $t14, n
+    bgt $t0, $t14, exit1
+
+    lw $t0, i
+    sll $t0, $t0, 2
+    add $t0, $t0, A
+    lw $t13, 0($t0)
+    sw $t13, t
+
+    lw $a0, t
+    li $v0, 1
+    syscall
+
+    li $a0, 10
+    li $v0, 11
+    syscall
+
+    lw $t0, i
+    li $t7, 1
+    add $t0, $t0, $t7
+    sw $t0, i
+
+    j loop1
+
+exit1:
+return:
+    # Exit program
+    li $v0, 10
+    syscall
+

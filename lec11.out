@@ -1,0 +1,40 @@
+.data
+acc: .word 0
+ctr: .word 0
+con: .word 0
+ 
+.text
+main:
+    li $t0, 1
+    sw $t0, acc
+
+    li $t1, 100
+    sw $t1, ctr
+
+loop:
+    lw $t1, ctr
+    li $t2, 1
+    sub $t3, $t1, $t2
+    sw $t3, con
+
+    lw $t3, con
+    li $t2, 1
+    blt $t3, $t2, done
+
+    lw $t0, acc
+    lw $t1, ctr
+    mult $t0, $t0, $t1
+    sw $t0, acc
+
+    lw $t1, ctr
+    li $t2, 1
+    sub $t1, $t1, $t2
+    sw $t1, ctr
+
+    j loop
+
+done:
+    # Exit program
+    li $v0, 11
+    syscall
+

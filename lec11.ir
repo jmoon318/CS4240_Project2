@@ -1,11 +1,14 @@
 #start_function
 void main():
-int-list: s1, s2, s3, s4, s5, s6
+int-list: acc, ctr, con
 float-list: 
-    assign, s1, 2
-    assign, s2, 4
-    add, s3, s1, s2
-    add, s4, s3, 1
-    mult, s5, s1, s2
-    mult, s6, s4, 2
+    assign, acc, 1
+    assign, ctr, 100
+loop:
+    sub, con, ctr, 1
+    brlt, done, con, 1
+    mult acc, acc, ctr
+    sub, ctr, ctr, 1
+    goto loop
+done:
 #end_function

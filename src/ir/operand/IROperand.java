@@ -30,5 +30,8 @@ public abstract class IROperand {
         }
         return false;
     }
+    public String getValue() {
+        return value;
+    }
 
 }

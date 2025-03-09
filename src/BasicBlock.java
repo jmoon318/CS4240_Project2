@@ -1,10 +1,15 @@
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import ir.IRFunction;
 import ir.IRInstruction;
 import ir.IRPrinter;
 import ir.IRInstruction.OpCode;
+import ir.operand.IRConstantOperand;
+import ir.operand.IRLabelOperand;
 import ir.operand.IROperand;
 import ir.operand.IRVariableOperand;
 
@@ -384,7 +389,6 @@ public class BasicBlock {
                 }
             }
         }
-        System.out.println("got uevars: " + out + " start @ " + this.startLine);
         return out;
     }
     
@@ -489,17 +493,84 @@ public class BasicBlock {
         //System.out.print(" }\n");
     }
 
-    // takes a map of String variable names to Integer stack ptr offset 
-    public String makeNaiveASM(HashMap<String, Integer> stackMap) {
-        // run our instruction selection algorithm
-
-        // each time a variable is used/read we must retrieve it from the stack
-        // each time a variable is written/defed we must store it to the stack
-        // use the stack map to determine where the variables are stored in relation to $sp
-        return null;
+    public HashMap<String, Integer> getVarUseSet() {
+        HashMap<String, Integer> out = new HashMap<>();
+        ArrayList<IRInstruction> instrPool = new ArrayList<>(this.instructions);
+        for (IRInstruction instr : this.instructions) {
+            for (IROperand operand : instr.operands) {
+                if (operand instanceof IRVariableOperand) {
+                    String name = operand.getValue();
+                    if (out.get(name) != null) {
+                        out.put(name, out.get(name) + 1);
+                    } else {
+                        out.put(name, 1);
+                    }
+                }
+            }
+        }
+        return out;
     }
 
-    public String makeGreedyASM(HashMap<String, Integer> stackMap, InterferenceGraph iGraph) {
+    public ArrayList<String> getUseOnly() {
+        ArrayList<String> out = new ArrayList<>();
+        for (IRInstruction instr : this.instructions) {
+            if (isDefinitionOp(instr.opCode)) {
+                String name = instr.getDefOperand().getValue();
+                for (IROperand operand : instr.operands) {
+                    if (!(operand.getValue().equals(name) || 
+                        operand instanceof IRConstantOperand || 
+                        operand instanceof IRLabelOperand)) {
+                        out.add(name);
+                    }
+                }
+            }
+        }
+        return out;
+ 
+    }
+
+    public ArrayList<String> getVarDefs() {
+        ArrayList<String> out = new ArrayList<>();
+        for (IRInstruction instr : this.instructions) {
+            if (isDefinitionOp(instr.opCode)) {
+                String name = instr.getDefOperand().getValue();
+                if (!out.contains(name)) {
+                    out.add(name);
+                }
+            }
+        }
+
+        return out;
+    }
+
+    public HashMap<String, Integer> getRegMap() {
+        HashMap<String, Integer> worklist = getVarUseSet();
+        for (String liveVar : this.getLiveIn()) {
+            if (worklist.get(liveVar) == null) {
+                worklist.put(liveVar, 1);
+            }
+        }
+        HashMap<String, Integer> out = new HashMap<>();
+        int max_use = 0;
+        String max_var = "";
+        int reg = 0;
+        while(worklist.size() > 0) {
+            for (String var : worklist.keySet()) {
+                if (worklist.get(var) > max_use) {
+                    max_use = worklist.get(var);
+                    max_var = var;
+                }
+            }
+            out.put(max_var, reg++);
+            worklist.remove(max_var);
+            max_use = 0;
+            max_var = "";
+        }
+
+        return out;
+    }
+
+    public String makeGreedyASM(HashMap<String, Integer> stackMap) {
         // start by adding the code to load in the LiveIn variables from stack to registers.
         // I think that if a variable doesn't appear in any of the livein/out sets then its an internal
         // value to that BB and does not need space on the stack.
@@ -513,7 +584,85 @@ public class BasicBlock {
         // Variables that overflow/spill will use the same load/store logic as the naive approach.
 
         // store the LiveOut variables to their locations on the stack
-        return null;
+        
+        ByteArrayOutputStream outputStream;
+        PrintStream ps;
+        
+        try {
+            outputStream = new ByteArrayOutputStream();
+            ps = new PrintStream(outputStream, true, StandardCharsets.UTF_8.name());
+        
+            GreedyAllocator gAlloc = new GreedyAllocator(ps, this, stackMap);
+            for (String virtReg : this.getVarUseSet().keySet()) {
+            //System.out.println(";; virt: " + virtReg + " phys: " + this.getRegMap().get(virtReg));
+            }
+        for (String virtReg : this.liveIn) {
+            //System.out.println(";; virt: " + virtReg + " phys: " + this.getRegMap().get(virtReg));
+
+        }
+        int start = 0;
+        boolean save = true;
+        if (this.instructions.get(0).opCode == OpCode.LABEL) {
+            gAlloc.printInstruction(this.instructions.get(0), this.func);
+            if (this.instructions.size() > 1) { 
+                IRInstruction next = this.instructions.get(1);
+                if (this.instructions.size() == 1) {
+                    return outputStream.toString("UTF-8");
+                } else if (next.opCode == OpCode.GOTO ||
+                        next.opCode == OpCode.BREQ || 
+                        next.opCode == OpCode.BRNEQ ||
+                        next.opCode == OpCode.BRLT || 
+                        next.opCode == OpCode.BRGT ||
+                        next.opCode == OpCode.BRGEQ) {
+                            save = false;
+                }
+            }
+            start = 1;
+        }
+
+        for (String virtReg : this.getVarUseSet().keySet()) {
+            int regno = this.getRegMap().get(virtReg);
+            if (regno >= 0 && regno <= 7) {
+                String pReg = "$t" + regno;
+                int stackOff = stackMap.get(virtReg);
+                ps.println("    lw " + pReg + ", -" + stackOff + "($fp)");
+            } // if our virtual register was spilled it will be loaded from memory when needed.
+        }
+        
+        
+        IRInstruction final_instr = null;
+        for (int i = start; i < this.instructions.size(); i++) {
+            IRInstruction instr = this.instructions.get(i);
+            if  (instr.opCode == OpCode.GOTO ||
+                instr.opCode == OpCode.BREQ || 
+                instr.opCode == OpCode.BRNEQ ||
+                instr.opCode == OpCode.BRLT || 
+                instr.opCode == OpCode.BRGT ||
+                instr.opCode == OpCode.BRGEQ) {
+                    final_instr = instr;
+            } else {
+                gAlloc.printInstruction(instr, this.func);
+            }
+        }        
+            for (String virtReg : this.liveOut) {
+                if (this.getVarDefs().contains(virtReg)) {
+                    int regno = this.getRegMap().get(virtReg);
+                    if (regno >= 0 && regno <= 7) {
+                        String pReg = "$t" + regno;
+                        int stackOff = stackMap.get(virtReg);
+                        ps.println("    sw " + pReg + ", -" + stackOff + "($fp)");
+                    } // if our virtual register was spilled then it should already have been written to memory.
+                }
+            }
+        if (final_instr != null) {
+            gAlloc.printInstruction(final_instr, this.func);
+        }
+        return outputStream.toString("UTF-8");
+        } catch (Exception e) {
+            System.out.println(e.fillInStackTrace());
+            System.out.println(e);
+            return "";
+        }
     }
 
 }

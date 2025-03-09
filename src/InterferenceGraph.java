@@ -32,6 +32,7 @@ public class InterferenceGraph {
             // we now have the biggest line # of where this instr def is used
             // this might be useful for building Live Out set as well
             for (IRInstruction otherInstr : block.instructions) {
+                System.out.println("instruction: " + otherInstr.toString());
                 // for each of the other instructions see if we overlap, if so, add an edge
                 if (instr.irLineNumber != otherInstr.irLineNumber && overlap(liveRange, getLiveRange(otherInstr, block))) {
                     vertex.edges.add(otherInstr);
@@ -95,7 +96,7 @@ public class InterferenceGraph {
     }
     
     // returns a map of String var name to integer register assignment
-    // 0-9 coorespond to t0 - t9, and 10 means the variable is spilled
+    // 0-9 coorespond to t0 - t9. t8 & t9 are reserved for spilled variables
     public HashMap<String, Integer> getRegMap() {
         HashMap<String, Integer> out = new HashMap<String, Integer>();
         
@@ -109,8 +110,8 @@ public class InterferenceGraph {
             rangeLens.put(var, rangeSize);
         }
         // now our rangeLens hashmap has each var to the range size
-        // assign each of 10 registers (0-9) to the largest range sizes
-        for (int i = 0; i < 10; i ++) {
+        // assign each of 8 registers (0-7) to the largest range sizes
+        for (int i = 0; i < 8; i ++) {
             int highest = 0;
             for (String var : rangeLens.keySet()) {
                 if (rangeLens.get(var) > highest) {
@@ -121,9 +122,9 @@ public class InterferenceGraph {
                 }
             }
         }
-        // assign the register #10 to the remaining variables, these will be spilled
+        // assign the register #8 to the remaining variables, these will be spilled
         for (String var : rangeLens.keySet()) {
-            out.put(var, 10);
+            out.put(var, 8);
         }
         return out;
     }

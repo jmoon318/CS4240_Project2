@@ -122,6 +122,7 @@ public class MIPSInterpreter {
                     if (go && stopLabel.equals(inst.label)) {
                         go = false;
                     } else {
+                        //System.out.println("executing instrs: " + program.instructions + ", pc: " + pc);
                         execute(inst);
                     }
                 } catch (IllegalReadException e) {
