@@ -90,6 +90,9 @@ public class GreedyAllocator {
                 String op1_asm = getRegister(op1);
                 String op2_asm = getRegister(op2);
                 String res_asm = getRegister(res);
+                if (op.equals("mult")) {
+                    op = "mul";
+                }
 
                 if (isNumeric(op1) && isNumeric(op2)) {
                     ps.println("    li $t8, " + op1);
@@ -191,6 +194,24 @@ public class GreedyAllocator {
                 break;
 
             case "return":
+                
+                if (operands.length >= 1) {
+                    if (isNumeric(operands[0].getValue())) {
+                        ps.println("    li $v0, " + operands[0].getValue());
+                    } else if (getRegister(operands[0].getValue()).equals("")) {
+                        ps.println("    lw $v0, -" + getOff(operands[0].getValue()) + "($fp)");
+                    } else {
+                        ps.println("    move $v0, " + getRegister(operands[0].getValue()));
+                    }
+                }
+                
+                ps.println("    lw   $ra, 0($sp)");
+                ps.println("    addi $sp, $sp, 4");
+                if (func.local_size > 0) {
+                    ps.println("    addi $sp, $sp, " + func.local_size);
+                }
+                ps.println("    lw   $fp, 0($sp)");
+                ps.println("    addi $sp, $sp, 4");
                 ps.println("    jr $ra");
                 break;
 
@@ -306,14 +327,14 @@ public class GreedyAllocator {
                     ps.println("    jal " + functionName);
                     if (dest1 != null) {
                         // String reg = getRegister(dest1);
-                        ps.println("    move $t0, $v0");
-                        ps.println("    sw $t0, -" + stackMap.get(dest1) + "($fp)");
+                        //ps.println("    move $t0, $v0");
+                        ps.println("    sw $v0, -" + stackMap.get(dest1) + "($fp)");
                     }
                     if (stackArgOffset > 0) {
                         ps.println("    addi $sp, $sp, " + stackArgOffset);
                     }
                     // restore return address
-                    ps.println("    lw $ra, 32($sp)");
+                    // ps.println("    lw $ra, 32($sp)");
                     for (String virtReg : this.basicBlock.getVarUseSet().keySet()) {
                         String pReg = getRegister(virtReg);
                         if (!pReg.equals("")) {

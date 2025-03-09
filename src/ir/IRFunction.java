@@ -20,6 +20,8 @@ public class IRFunction {
 
     public List<IRInstruction> worklist = new ArrayList<IRInstruction>();
 
+    public int local_size;
+
     public IRFunction(String name, IRType returnType,
                       List<IRVariableOperand> parameters, List<IRVariableOperand> variables,
                       List<IRInstruction> instructions) {

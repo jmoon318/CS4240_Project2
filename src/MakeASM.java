@@ -22,33 +22,36 @@ public class MakeASM {
         IRProgram optimizedProgram = new IRProgram();
 
         PrintStream fileOut = new PrintStream(System.out);
-        NaiveAllocator allocator = new NaiveAllocator(fileOut);
-        allocator.NaivePrintProgram(program);
+        if (args[1].equals("--naive")) {
+            NaiveAllocator allocator = new NaiveAllocator(fileOut);
+            allocator.NaivePrintProgram(program);
+        }
+        if (args[1].equals("--greedy")) {
+            for (IRFunction func : program.functions) {
+                // System.out.println("Map for function: " + func.name);
+                //build the def/reach map for the whole function
+                HashMap<Integer, IRInstruction> varDefReachMap = Reaching.getVarDefReachMap(func);
+                // System.out.println("\n Variable Definitions (varDefReachMap):");
+                for (Integer defLine : varDefReachMap.keySet()) {
+                    IRInstruction instr = varDefReachMap.get(defLine);
+                    String varName = instr.getDefOperand().toString();
+                    String defID = instr.getDefID();
 
-        // for (IRFunction func : program.functions) {
-        //     // System.out.println("Map for function: " + func.name);
-        //     //build the def/reach map for the whole function
-        //     HashMap<Integer, IRInstruction> varDefReachMap = Reaching.getVarDefReachMap(func);
-        //     // System.out.println("\n Variable Definitions (varDefReachMap):");
-        //     for (Integer defLine : varDefReachMap.keySet()) {
-        //         IRInstruction instr = varDefReachMap.get(defLine);
-        //         String varName = instr.getDefOperand().toString();
-        //         String defID = instr.getDefID();
-
-        //         //System.out.println("DefID: " + defID + " | Variable: " + varName + " | Defined at Line: " + defLine);
-        //     }
-        //     // System.out.println();
-        //     BasicBlock head = new BasicBlock(func, varDefReachMap);
-        //     Reaching.computeUseSet(head.getBlockList(), varDefReachMap);
-        //     buildLiveSets(head);
-        //     for (BasicBlock b : head.getBlockList()) {
-        //     //    System.out.println("BB starting at line " + b.startLine + " and ending at line "+ b.endLine);
-        //         //System.out.println("LiveIn: " + b.getLiveIn());
-        //         //System.out.println("LiveOut: " + b.getLiveOut());
-        //     }
-        //     String greedyASM = makeGreedyASM(head, func);
-        //     System.out.println(greedyASM);
-        // }
+                    //System.out.println("DefID: " + defID + " | Variable: " + varName + " | Defined at Line: " + defLine);
+                }
+                // System.out.println();
+                BasicBlock head = new BasicBlock(func, varDefReachMap);
+                Reaching.computeUseSet(head.getBlockList(), varDefReachMap);
+                buildLiveSets(head);
+                for (BasicBlock b : head.getBlockList()) {
+                    //System.out.println("BB starting at line " + b.startLine + " and ending at line "+ b.endLine);
+                    //System.out.println("LiveIn: " + b.getLiveIn());
+                    //System.out.println("LiveOut: " + b.getLiveOut());
+                }
+                String greedyASM = makeGreedyASM(head, func);
+                System.out.println(greedyASM);
+            }
+        }
         fileOut.close();
     }
 
@@ -94,7 +97,7 @@ public class MakeASM {
         }
         
         local_size += arg_size;
-
+        func.local_size = local_size;
 
         ps.print(func.name);
         ps.println(':');

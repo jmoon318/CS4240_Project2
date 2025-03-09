@@ -4,6 +4,7 @@ import ir.IRInstruction;
 
 public class IRFunctionOperand extends IROperand {
 
+
     public IRFunctionOperand(String name, IRInstruction parent) {
         super(name, parent);
     }
