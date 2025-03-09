@@ -128,7 +128,7 @@ public class IRInstruction {
         }
         return out;
     }
-   private static boolean isDefinitionOp(OpCode opCode) {
+    public static boolean isDefinitionOp(OpCode opCode) {
         return opCode == OpCode.ADD || opCode == OpCode.SUB ||
                 opCode == OpCode.MULT || opCode == OpCode.DIV ||
                 opCode == OpCode.AND || opCode == OpCode.OR ||

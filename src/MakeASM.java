@@ -18,12 +18,12 @@ public class MakeASM {
     public static void main(String[] args) throws Exception {
         // System.out.println(System.getProperty("user.dir"));
         IRReader irReader = new IRReader();
-        IRProgram program = irReader.parseIRFile("/home/charlie/Code/cs4240/CS4240_Project2/quicksort.ir");
+        IRProgram program = irReader.parseIRFile(args[0]);
         IRProgram optimizedProgram = new IRProgram();
 
         PrintStream fileOut = new PrintStream(System.out);
-        NaiveAllocator allocator = new NaiveAllocator(fileOut);
-        allocator.NaivePrintProgram(program);
+        //NaiveAllocator allocator = new NaiveAllocator(fileOut);
+        //allocator.NaivePrintProgram(program);
 
         for (IRFunction func : program.functions) {
             // System.out.println("Map for function: " + func.name);
@@ -46,8 +46,8 @@ public class MakeASM {
                 //System.out.println("LiveIn: " + b.getLiveIn());
                 //System.out.println("LiveOut: " + b.getLiveOut());
             }
-            //String greedyASM = makeGreedyASM(head, func);
-            //System.out.println(greedyASM);
+            String greedyASM = makeGreedyASM(head, func);
+            System.out.println(greedyASM);
         }
         fileOut.close();
     }
@@ -116,9 +116,9 @@ public class MakeASM {
                 ps.println("    sw $t0, -" + offset + "($fp)");
             }
         }
-
-        ps.println("    addi $sp, $sp, -" + local_size);
-
+        if (local_size > 0) {
+            ps.println("    addi $sp, $sp, -" + local_size);
+        }
        //MAYBE: align stack pointer to 32 bits 
         ps.println("    addi $sp, $sp, -4");
 
@@ -128,8 +128,8 @@ public class MakeASM {
         // store address at local stack offset
         for (IRVariableOperand var : func.variables) {
             //System.out.println(var.getName());
-            if (var.type inst
-            ps.println("    li $v0, 1");rr = (IRArrayType) var.type;
+            if (var.type instanceof IRArrayType && !func.parameters.contains(var)) {
+                IRArrayType arr = (IRArrayType) var.type;
                 ps.println("    li $v0, 9");
                 ps.println("    li $a0, " + ((arr.getSize() * 4) + 4));
                 ps.println("    syscall");
@@ -153,8 +153,9 @@ public class MakeASM {
 
         ps.println("    lw   $ra, 0($sp)");
         ps.println("    addi $sp, $sp, 4");
-        ps.println("    addi $sp, $sp, " + local_size);
-
+        if (local_size > 0) {
+            ps.println("    addi $sp, $sp, " + local_size);
+        }
         ps.println("    lw   $fp, 0($sp)");
         ps.println("    addi $sp, $sp, 4");
 

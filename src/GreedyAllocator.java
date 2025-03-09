@@ -1,6 +1,7 @@
 import ir.IRFunction;
 import ir.IRInstruction;
 import ir.IRProgram;
+import ir.IRInstruction.OpCode;
 import ir.datatype.IRArrayType;
 import ir.datatype.IRIntType;
 import ir.operand.IROperand;
@@ -264,12 +265,14 @@ public class GreedyAllocator {
                     ps.println("    syscall");
                 } else {
                     // only need to worry about saving and restoring this block's basic registers
-                    for (String virtReg : this.basicBlock.getVarUseSet().keySet()) {
-                        String pReg = getRegister(virtReg);
-                        if (!pReg.equals("")) {
-                            ps.println("    sw " + pReg + ", -" + getOff(virtReg) + "($fp)");
+                    //if (func.instructions.get(func.instructions.indexOf(instruction) - 1).opCode != OpCode.LABEL) {
+                        for (String virtReg : this.basicBlock.getVarUseSet().keySet()) {
+                            String pReg = getRegister(virtReg);
+                            if (!pReg.equals("")) {
+                                ps.println("    sw " + pReg + ", -" + getOff(virtReg) + "($fp)");
+                            }
                         }
-                    }
+                    //}
                     // arg handling 
                     // NOTE: Because we back up and restore registers around this we can reuse the same code from naive
                     int stackArgOffset = 0 ;
@@ -297,18 +300,18 @@ public class GreedyAllocator {
                             }
                         }
                     }
-
-                    ps.println("    addi $sp, $sp, -" + stackArgOffset);
-
+                    if (stackArgOffset > 0) {
+                        ps.println("    addi $sp, $sp, -" + stackArgOffset);
+                    }
                     ps.println("    jal " + functionName);
                     if (dest1 != null) {
                         // String reg = getRegister(dest1);
                         ps.println("    move $t0, $v0");
                         ps.println("    sw $t0, -" + stackMap.get(dest1) + "($fp)");
                     }
-
-                    ps.println("    addi $sp, $sp, " + stackArgOffset);
-
+                    if (stackArgOffset > 0) {
+                        ps.println("    addi $sp, $sp, " + stackArgOffset);
+                    }
                     // restore return address
                     ps.println("    lw $ra, 32($sp)");
                     for (String virtReg : this.basicBlock.getVarUseSet().keySet()) {
@@ -342,6 +345,7 @@ public class GreedyAllocator {
 
                 if (getRegister(arr).equals("")) {
                     ps.println("    lw $t8, -" + arr_addr_off + "($fp)");
+                    arr_asm = "$t8";
                 }
                 ps.println("    sll $t9, $t9, 2");
                 ps.println("    add $t9, $t9, " + arr_asm);
@@ -408,7 +412,6 @@ public class GreedyAllocator {
             default:
                 System.out.println("Unsupported IR OpCode: " + op);
         }
-        ps.println();
     }
 
     private String getMIPSBranchOp(String irOp) {
