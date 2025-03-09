@@ -15,63 +15,28 @@ public class GreedyAllocator {
 
     private PrintStream ps;
 
-    public GreedyAllocator(PrintStream ps) {
+    public GreedyAllocator(PrintStream ps, BasicBlock block, Map<String, Integer> stackMap) {
         this.ps = ps;
+        this.basicBlock = block;
+        this.operandToRegisterMap = block.getRegMap();
+        this.stackMap = stackMap;
     }
 
     private Map<String, Integer> operandToRegisterMap = null;
+    Map<String, Integer> stackMap = null;
+    BasicBlock basicBlock = null;
     String t9Name;
     String t8Name;
     String t7Name;
 
-    public void GreedyPrintBlock(BasicBlock block) {
-        if (operandToRegisterMap.size() > 10) {
-            for (String op : operandToRegisterMap.keySet()) {
-                if (operandToRegisterMap.get(op) == 9) {
-                    this.t9Name = op;
-                }
-                if (operandToRegisterMap.get(op) == 9) {
-                    this.t8Name = op;
-                }
-                if (operandToRegisterMap.get(op) == 9) {
-                    this.t7Name = op;
-                }
-            }
-        }
-
-
-        InterferenceGraph iGraph = block.getIGraph();
-        operandToRegisterMap = iGraph.getRegMap();
-        // IR-ASM mapping
-
-        for (IRInstruction instr : block.instructions) {
-            printInstruction(instr);
-        }
-    }
-
-    public void printFunction(IRFunction function) {
-
-
-        ps.print(function.name);
-        ps.println(':');
-
-        // Print instructions
-        for (IRInstruction instruction : function.instructions) {
-            printInstruction(instruction);
-        }
-        // ps.println("    # Exit program");
-        // ps.println("    li $v0, 10");
-        // ps.println("    syscall");
-    }
-
-    public void printInstruction(IRInstruction instruction) {
+    public  void printInstruction(IRInstruction instruction, IRFunction func) {
+        String c_function_name = func.name;
         if (instruction.opCode == IRInstruction.OpCode.LABEL) {
-            ps.print(instruction.operands[0]);
-            ps.print(":");
-            ps.println();
+            String labelName = instruction.operands[0].getValue();
+            String uniqueLabel =  c_function_name + "_" + labelName;
+            ps.println(uniqueLabel + ":");
             return;
         }
-
 
         String op = instruction.opCode.toString();
         IROperand[] operands = instruction.operands;
@@ -89,24 +54,24 @@ public class GreedyAllocator {
                         if (getRegister(dest).equals("")) {
                             // spill the destination
                             ps.println("    li $t9, " + value);
-                            ps.println("    sw $t9, 0(" + dest + ")");
+                            ps.println("    sw $t9, -" + getOff(dest) + "($fp)");
                         } else {
+
                             ps.println("    li " + getRegister(dest) + ", " + value);
                         }
                     } else {
                         if (getRegister(dest).equals("") && getRegister(value).equals("")) {
                             // spill source and destination
-                            ps.println("    lw $t9, 0(" + value + ")");
-                            ps.println("    sw $t9, 0(" + dest + ")");
+                            ps.println("    lw $t9, -" + getOff(value) + "($fp)");
+                            ps.println("    sw $t9, -" + getOff(dest) + "($fp)");
                         } else if (getRegister(dest).equals("")) {
                             // spill dest
-                            ps.println("    sw " + value + ", 0(" + dest + ")");
+                            ps.println("    sw " + getRegister(value) + ", -" + getOff(dest) + "($fp)");
                         } else if (getRegister(value).equals("")) {
                             // spill source
-                            ps.println("    lw $t9, 0(" + value + ")");
-                            ps.println("    move $t9, " + dest);
+                            ps.println("    lw " + getRegister(dest) + ", -" + getOff(value) + "($fp)");
                         } else {
-                            ps.println("    move " + dest + ", " + value);
+                            ps.println("    move " + getRegister(dest) + ", " + getRegister(value));
                         }
                     }
                 break;
@@ -121,56 +86,55 @@ public class GreedyAllocator {
                 String res = operands[0].getValue();
                 String op1 = operands[1].getValue();
                 String op2 = operands[2].getValue();
+                String op1_asm = getRegister(op1);
+                String op2_asm = getRegister(op2);
+                String res_asm = getRegister(res);
 
-                if (isNumeric(op2)) {
-                    if (getRegister(res).equals("") && getRegister(op1).equals("")) {
-                        ps.println("    lw $t8, 0(" + op1 + ")");
-                        ps.println("    " + op + "i " + "$t9, $t8, " + op2);
-                        ps.println("    sw $t9, 0(" + res + ")");
-                    } else if (getRegister(res).equals("")) {
-                        ps.println("    " + op + "i " + "$t9, " + op1 + ", " + op2);
-                        ps.println("    sw $t9, 0(" + res + ")");
-                    } else if (getRegister(op1).equals("")) {
-                        ps.println("    lw $t9, 0(" + op1 + ")");
-                        ps.println("    " + op + "i " + res + ", $t9, " + op2);
-                    } else {
-                        ps.println("    " + op + "i " + res + ", " + op1 + ", " + op2);
-                    }
+                if (isNumeric(op1) && isNumeric(op2)) {
+                    ps.println("    li $t8, " + op1);
+                    ps.println("    li $t9, " + op2);
+                    op1_asm = "$t8";
+                    op1_asm = "$t9";
+                } else if (isNumeric(op1)){
+                    ps.println("    li $t8, " + op1);
+                    op1_asm = "$t8";
+                }else if (isNumeric(op2)) {
+                    ps.println("    li $t9, " + op2);
+                    op2_asm = "$t9";
+                } 
+                if (res_asm.equals("") && op1_asm.equals("") && op2_asm.equals("")) {
+                    ps.println("    lw $t8, -" + getOff(op1) + "($fp)");
+                    ps.println("    lw $t9, -" + getOff(op2) + "($fp)");
+                    ps.println("    " + op + " $t9, $t8, $t9");
+                    ps.println("    sw $t9, -" + getOff(res) + "($fp)");
+                } else if (res_asm.equals("") && op2_asm.equals("")) {
+                    ps.println("    lw $t8, -" + getOff(op1) + "($fp)");
+                    ps.println("    " + op + " $t9, $t8, " + op2_asm);
+                    ps.println("    sw $t9, -" + getOff(res) + "($fp)");
+                } else if (op1_asm.equals("") && op2_asm.equals("")) {
+                    ps.println("    lw $t8, -" + getOff(op1) + "($fp)");
+                    ps.println("    lw $t9, -" + getOff(op2) + "($fp)");
+                    ps.println("    " + op + " " + res_asm + ", $t8, $t9");
+                } else if (res_asm.equals("") && op2_asm.equals("")) {
+                    ps.println("    lw $t9, -" + getOff(op2) + "($fp)");
+                    ps.println("    " + op + " $t9, " + op1_asm + ", $t9");
+                    ps.println("    sw $t9, -" + getOff(res) + "($fp)");
+                } else if (res_asm.equals("")) {
+                    ps.println("    " + op + " $t9, " + op1_asm + ", " + op2_asm);
+                    ps.println("    sw $t9, -" + getOff(res) + "($fp)");
+                } else if (op1_asm.equals("")) {
+                    ps.println("    lw $t8, -" + getOff(op1) + "($fp)");
+                    ps.println("    " + op + " " + res_asm + ", $t8, " + op2_asm);
+                } else if (op2_asm.equals("")) {
+                    ps.println("    lw $t9, -" + getOff(op2) + "($fp)");
+                    ps.println("    " + op + " " + res_asm + ", " + op1_asm + ", $t9");
                 } else {
-                    if (getRegister(res).equals("") && getRegister(op1).equals("") && getRegister(op2).equals("")) {
-                        ps.println("    lw $t8, 0(" + op1 + ")");
-                        ps.println("    lw $t7, 0(" + op2 + ")");
-                        ps.println("    " + op + " $t9, $t8, $t7");
-                        ps.println("    sw $t9, 0(" + res + ")");
-                    } else if (getRegister(res).equals("") && getRegister(op1).equals("")) {
-                        ps.println("    lw $t8, 0(" + op1 + ")");
-                        ps.println("    " + op + " $t9, $t8, " + op2);
-                        ps.println("    sw $t9, 0(" + res + ")");
-                    } else if (getRegister(op1).equals("") && getRegister(op2).equals("")) {
-                        ps.println("    lw $t8, 0(" + op1 + ")");
-                        ps.println("    lw $t7, 0(" + op2 + ")");
-                        ps.println("    " + op + " " + res + ", $t8, $t7");
-                    } else if (getRegister(res).equals("") && getRegister(op2).equals("")) {
-                        ps.println("    lw $t7, 0(" + op2 + ")");
-                        ps.println("    " + op + " $t9, " + op1 + ", $t7");
-                        ps.println("    sw $t9, 0(" + res + ")");
-                    } else if (getRegister(res).equals("")) {
-                        ps.println("    " + op + " $t9, " + op1 + ", " + op2);
-                        ps.println("    sw $t9, 0(" + res + ")");
-                    } else if (getRegister(op1).equals("")) {
-                        ps.println("    lw $t8, 0(" + op1 + ")");
-                        ps.println("    " + op + " " + res + ", $t8, " + op2);
-                    } else if (getRegister(op2).equals("")) {
-                        ps.println("    lw $t7, 0(" + op2 + ")");
-                        ps.println("    " + op + " " + res + ", " + op1 + ", $t7");
-                    } else {
-                        ps.println("    " + op + " " + res + ", " + op1 + ", " + op2);
-                    }
+                    ps.println("    " + op + " " + res_asm + ", " + op1_asm + ", " + op2_asm);
                 }
                 break;
 
             case "goto":
-                ps.println("    j " + operands[0].getValue());
+                ps.println("    j " + c_function_name + "_" + operands[0].getValue());
                 break;
 
             case "breq":  // Branch if Equal (==)
@@ -193,7 +157,7 @@ public class GreedyAllocator {
                 } else {
                     if (getRegister(cmp1).equals("")) {
                         cmp1Spilled = true;
-                        ps.println("    lw $t9, 0(" + cmp1 + ")");
+                        ps.println("    lw $t9, -" + getOff(cmp1) + "($fp)");
                     }
                 }
 
@@ -201,9 +165,9 @@ public class GreedyAllocator {
                     cmp2Spilled = true;
                     ps.println("    li $t8, " + cmp2);
                 } else {
-                    if (getRegister(cmp1).equals("")) {
+                    if (getRegister(cmp2).equals("")) {
                         cmp2Spilled = true;
-                        ps.println("    lw $t8, 0(" + cmp2 + ")");
+                        ps.println("    lw $t8, -" + getOff(cmp2) + "($fp)");
                     }
                 }
 
@@ -213,16 +177,16 @@ public class GreedyAllocator {
                 if (cmp1Spilled) {
                     ps.print("$t9, ");
                 } else {
-                    ps.print(cmp1 + ", ");
+                    ps.print(getRegister(cmp1) + ", ");
                 }
 
                 if (cmp2Spilled) {
                     ps.print("$t8, ");
                 } else {
-                    ps.print(cmp2 + ", ");
+                    ps.print(getRegister(cmp2) + ", ");
                 }
 
-                ps.println(lbl);
+                ps.println(c_function_name + "_" + lbl);
                 break;
 
             case "return":
@@ -236,6 +200,12 @@ public class GreedyAllocator {
                 String arg = (op.equals("callr")) ? (operands.length > 2 ? operands[2].getValue() : null)
                         : (operands.length > 1 ? operands[1].getValue() : null);
 
+                List<String> args = new ArrayList<>();
+                int startIdx = op.equals("callr") ? 2 : 1; 
+                for (int i = startIdx; i < operands.length; i++) {
+                    args.add(operands[i].getValue());
+                }
+
                 // (`geti`) → syscall 5
                 if (functionName.equals("geti")) {
                     ps.println("    li $v0, 5");
@@ -245,7 +215,7 @@ public class GreedyAllocator {
                         String reg = getRegister(dest1);
                         if (reg.equals("")) {
                             //ps.println("    move " + reg + ", $v0");
-                            ps.println("    sw $v0, 0(" + dest1 + ")");
+                            ps.println("    sw $v0, -" + getOff(dest1) + "($fp)");
                         } else {
                             ps.println("    move " + reg + ", $v0");
                             //ps.println("    sw " + reg + ", " + dest1);
@@ -261,7 +231,7 @@ public class GreedyAllocator {
                     if (dest1 != null) {
                         String reg = getRegister(dest1);
                         if (reg.equals("")) {
-                            ps.println("    sw $v0, 0(" + dest1 + ")");
+                            ps.println("    sw $v0, -" + getOff(dest1) + "($fp)");
                         } else {
                             ps.println("    move " + reg + ", $v0");
                         }
@@ -272,8 +242,10 @@ public class GreedyAllocator {
                 else if (functionName.equals("puti")) {
                     if (isNumeric(arg)) {
                         ps.println("    li $a0, " + arg);
+                    } else if (getRegister(arg).equals("")){
+                        ps.println("    lw $a0, -" + getOff(arg) + "($fp)");
                     } else {
-                        ps.println("    lw $a0, 0(" + arg + ")");
+                        ps.println("    move $a0, " + getRegister(arg));
                     }
                     ps.println("    li $v0, 1");
                     ps.println("    syscall");
@@ -283,58 +255,154 @@ public class GreedyAllocator {
                 else if (functionName.equals("putc")) {
                     if (isNumeric(arg)) {
                         ps.println("    li $a0, " + arg);
+                    } else if (getRegister(arg).equals("")){
+                        ps.println("    lw $a0, -" + getOff(arg) + "($fp)");
                     } else {
-                        ps.println("    lw $a0, 0(" + arg + ")");
+                        ps.println("    move $a0, " + getRegister(arg));
                     }
                     ps.println("    li $v0, 11");
                     ps.println("    syscall");
+                } else {
+                    // only need to worry about saving and restoring this block's basic registers
+                    for (String virtReg : this.basicBlock.getVarUseSet().keySet()) {
+                        String pReg = getRegister(virtReg);
+                        if (!pReg.equals("")) {
+                            ps.println("    sw " + pReg + ", -" + getOff(virtReg) + "($fp)");
+                        }
+                    }
+                    // arg handling 
+                    // NOTE: Because we back up and restore registers around this we can reuse the same code from naive
+                    int stackArgOffset = 0 ;
+                    //System.out.println("ARGS SIZE + " + args.size() + ", OPERANDS SIZE = " + operands.length);
+                    for (int i = 0; i < args.size(); i++) {
+                        int offset = stackMap.getOrDefault(args.get(i), -1);
+                        if (i < 4) {
+                            if (offset == -1) {
+                                ps.println("    li $a" + i + ", " + args.get(i));    
+                            } else {
+                                ps.println("    lw $a" + i + ", -" + offset + "($fp)");
+                            }
+                        } else {
+                            if (offset == -1) {
+                                int stackOffset = (i - 3) * 4;
+                                ps.println("    li $t0, " + args.get(i));
+                                ps.println("    sw $t0, -" + stackOffset + "($sp)");
+                                stackArgOffset += 4;
+
+                            } else {
+                                int stackOffset = (i - 3) * 4;
+                                ps.println("    lw $t0, -" + offset + "($fp)");  
+                                ps.println("    sw $t0, -" + stackOffset + "($sp)");
+                                stackArgOffset += 4;
+                            }
+                        }
+                    }
+
+                    ps.println("    addi $sp, $sp, -" + stackArgOffset);
+
+                    ps.println("    jal " + functionName);
+                    if (dest1 != null) {
+                        // String reg = getRegister(dest1);
+                        ps.println("    move $t0, $v0");
+                        ps.println("    sw $t0, -" + stackMap.get(dest1) + "($fp)");
+                    }
+
+                    ps.println("    addi $sp, $sp, " + stackArgOffset);
+
+                    // restore return address
+                    ps.println("    lw $ra, 32($sp)");
+                    for (String virtReg : this.basicBlock.getVarUseSet().keySet()) {
+                        String pReg = getRegister(virtReg);
+                        if (!pReg.equals("")) {
+                            ps.println("    lw " + pReg + ", -" + getOff(virtReg) + "($fp)");
+                        }
+                    }
                 }
-
-                /*
-                *   PUT
-                *   USER
-                *   CALLED
-                *   FUNCTIONS
-                *   HERE!
-                * 
-                *   DON'T
-                *   FORGET
-                *   ABOUT
-                *   SPILLING!
-                */
-
                 break;
 
             case "array_store":
                 // array_store, arr, index, value → arr[index] = value
-                String arr = operands[0].getValue();
-                String index = operands[1].getValue();
-                String val = operands[2].getValue();
+                String val = operands[0].getValue();
+                int val_off = stackMap.get(val);
+                String val_asm = "$t8";
+                String arr = operands[1].getValue();
+                int arr_addr_off = stackMap.get(arr);
+                String arr_asm = getRegister(arr);
+                String index = operands[2].getValue();
 
-                ps.println("    lw " + getRegister(index) + ", 0(" + index + ")");
-                ps.println("    lw " + getRegister(val) + ", 0(" + val + ")");
-                ps.println("    sll " + getRegister(index) + ", " + getRegister(index) + ", 2");
-                ps.println("    add " + getRegister(index) + ", " + getRegister(index) + ", " + arr);
-                ps.println("    sw " + getRegister(val) + ", 0(" + getRegister(index) + ")");
+                // in order to avoid modifying the existing index value use $t9 for index/address modification
+                if (isNumeric(index)) {
+                    ps.println("    li $t9, " + index);
+                } else if(getRegister(index).equals("")){
+                    int idx_off = stackMap.get(index);
+                    ps.println("    lw $t9, -" + idx_off + "($fp)");
+                } else {
+                    ps.println("    move $t9, " + getRegister(index));
+                }
+
+                if (getRegister(arr).equals("")) {
+                    ps.println("    lw $t8, -" + arr_addr_off + "($fp)");
+                }
+                ps.println("    sll $t9, $t9, 2");
+                ps.println("    add $t9, $t9, " + arr_asm);
+
+                if ((!isNumeric(val)) && getRegister(val).equals("")) { 
+                    ps.println("    lw $t8, -" + val_off + "($fp)");
+                } else if (isNumeric(val)) {
+                    ps.println("    li $t8, " + val);
+                } else {
+                    val_asm = getRegister(val);
+                }
+                
+                ps.println("    sw " + val_asm + ", 0($t9)");
                 break;
 
             case "array_load":
                 // array_load, dest, arr, index → dest = arr[index]
-                String loadDest = operands[0].getValue();
-                String loadArr = operands[1].getValue();
-                String loadIdx = operands[2].getValue();
+                val = operands[0].getValue();
+                val_off = stackMap.get(val);
+                val_asm = "$t8";
+                arr = operands[1].getValue();
+                arr_addr_off = stackMap.get(arr);
+                arr_asm = "$t8";
+                index = operands[2].getValue();
 
-                ps.println("    lw " + getRegister(loadIdx) + ", 0(" + loadIdx + ")");
-                ps.println("    sll " + getRegister(loadIdx) + ", " + getRegister(loadIdx) + ", 2");
-                
-                ps.println("    add " + getRegister(loadIdx) + ", " + getRegister(loadIdx) + ", " + loadArr);
-                
-                ps.println("    lw " + getRegister(loadDest) + ", 0(" + getRegister(loadIdx) + ")");
-                ps.println("    sw " + getRegister(loadDest) + ", 0(" + loadDest + ")");
+                // in order to avoid modifying the existing index value use $t9 for index/address modification
+                if (isNumeric(index)) {
+                    ps.println("    li $t9, " + index);
+                } else if(getRegister(index).equals("")){
+                    int idx_off = stackMap.get(index);
+                    ps.println("    lw $t9, -" + idx_off + "($fp)");
+                } else {
+                    ps.println("    move $t9, " + getRegister(index));
+                }
+
+                if (getRegister(arr).equals("")) {
+                    ps.println("    lw $t8, -" + arr_addr_off + "($fp)");
+                } else {
+                    arr_asm = getRegister(arr);
+                }
+                ps.println("    sll $t9, $t9, 2");
+                ps.println("    add $t9, $t9, " + arr_asm);
+                // after this point t8 is unused and t9 holds the address of our array location
+
+                boolean spill = getRegister(val).equals("");
+                if (spill) { 
+                    ps.println("    lw $t8, -" + val_off + "($fp)");
+                } else {
+                    val_asm = getRegister(val);
+                }
+
+                ps.println("    lw " + val_asm + ", 0($t9)");
+                if (spill) {
+                    ps.println("    sw $t8, - " + val_off + "($fp)");
+                }
                 break;
 
             case "label":
-                ps.println(operands[0].getValue() + ":");
+                String labelName = instruction.operands[0].getValue();
+                String uniqueLabel =  c_function_name + "_" + labelName;
+                ps.println(uniqueLabel + ":");
                 break;
 
             default:
@@ -385,22 +453,26 @@ public class GreedyAllocator {
         return opCodeToAssembly.getOrDefault(opCode, "UNKNOWN");
     }
 
-    public boolean isNumeric(String str) {
+    public static boolean isNumeric(String str) {
         return str.matches("-?\\d+");
     }
 
 
     public String getRegister(String operand) {
-        int regNo = 10;
+        int regNo = 8;
         if (operandToRegisterMap.containsKey(operand)) {
             regNo = operandToRegisterMap.get(operand);
         }
-        if (regNo > 9) {
+        if (regNo > 7) {
             return "";
         }
 
         String reg = "$t" + regNo;
         return reg;
+    }
+
+    public int getOff(String virtReg) {
+        return this.stackMap.get(virtReg);
     }
 }
 
