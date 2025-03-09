@@ -69,15 +69,21 @@ public class NaiveAllocator {
         ps.println(".text");
         
         for (IRFunction function : program.functions) {
-            printFunction(function);
             if (function.name.equals("main")) {
+                printFunction(function);
                 ps.println("    li $v0, 10");
                 ps.println("    syscall");
-            } else {
-                ps.println("    jr $ra");
-
+                ps.println();
+                break; 
             }
-            ps.println();
+        }
+
+        for (IRFunction function : program.functions) {
+            if (!function.name.equals("main")) {
+                printFunction(function);
+                ps.println("    jr $ra");
+                ps.println();
+            }
         }
     }
 
@@ -145,7 +151,7 @@ public class NaiveAllocator {
             if (var.type instanceof IRArrayType && !function.parameters.contains(var)) {
                 IRArrayType arr = (IRArrayType) var.type;
                 ps.println("    li $v0, 9");
-                ps.println("    li $a0, " + (arr.getSize() * 4) + 4);
+                ps.println("    li $a0, " + (arr.getSize()*4));
                 ps.println("    syscall");
                 ps.println("    sw $v0, -" + stackMap.get(var.getName()) + "($fp)");
             }
@@ -208,6 +214,9 @@ public class NaiveAllocator {
                 } else {
                     int op2_off = stackMap.get(op2);
                     ps.println("    lw $t2, -" + op2_off + "($fp)");
+                }
+                if (op.equals("mult")) {
+                    op = "mul";
                 }
 
                 ps.println("    " + op + " $t0, $t1, $t2");
@@ -351,7 +360,7 @@ public class NaiveAllocator {
                     ps.println("    addi $sp, $sp, " + stackArgOffset);
 
                     // restore return address
-                    ps.println("    lw $ra, 32($sp)");
+                    // ps.println("    lw $ra, 32($sp)");
 
                 }
 
