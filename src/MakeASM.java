@@ -111,12 +111,16 @@ public class MakeASM {
             int offset = stackMap.get(func.parameters.get(i).getName());
             //ps.println(func.parameters.get(i));
             if (i < 4) {
-                ps.println("    sw $a" + i + ", -" + offset + "($fp)");
+                if (head.getRegMap().get(func.parameters.get(i).getName()) > 7) {
+                    ps.println("    sw $a" + i + ", -" + offset + "($fp)");
+                } else {
+                    ps.println("    move $t" + head.getRegMap().get(func.parameters.get(i).getName()) + ", $a" + i);
+                }
             } else {
-                ps.println("    lw $t0, " + argOffset + "($fp)");  
+                ps.println("    lw $t9, " + argOffset + "($fp)");  
                 argOffset -= 4;
 
-                ps.println("    sw $t0, -" + offset + "($fp)");
+                ps.println("    sw $t9, -" + offset + "($fp)");
             }
         }
         if (local_size > 0) {
@@ -136,7 +140,12 @@ public class MakeASM {
                 ps.println("    li $v0, 9");
                 ps.println("    li $a0, " + ((arr.getSize() * 4) + 4));
                 ps.println("    syscall");
-                ps.println("    sw $v0, -" + stackMap.get(var.getName()) + "($fp)");
+                //ps.println("    sw $v0, -" + stackMap.get(var.getName()) + "($fp)");
+                if (head.getRegMap().get(var.getName()) > 7) {
+                    ps.println("    sw $v0, -" + stackMap.get(var.getName()) + "($fp)");
+                } else {
+                    ps.println("    move $t" + head.getRegMap().get(var.getName()) + ", $v0");
+                }
             }
         }
 

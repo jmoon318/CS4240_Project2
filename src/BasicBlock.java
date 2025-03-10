@@ -30,7 +30,7 @@ public class BasicBlock {
     // outSet done the same way
     public HashMap<String, ArrayList<Integer>> outSet;
     public HashMap<String, ArrayList<Integer>> inSet;
-    private IRFunction func;
+    public IRFunction func;
     private Set<String> liveIn;
     private Set<String> liveOut;
 
@@ -495,8 +495,7 @@ public class BasicBlock {
 
     public HashMap<String, Integer> getVarUseSet() {
         HashMap<String, Integer> out = new HashMap<>();
-        ArrayList<IRInstruction> instrPool = new ArrayList<>(this.instructions);
-        for (IRInstruction instr : this.instructions) {
+        for (IRInstruction instr : this.func.instructions) {
             for (IROperand operand : instr.operands) {
                 if (operand instanceof IRVariableOperand) {
                     String name = operand.getValue();
@@ -545,11 +544,11 @@ public class BasicBlock {
 
     public HashMap<String, Integer> getRegMap() {
         HashMap<String, Integer> worklist = getVarUseSet();
-        for (String liveVar : this.getLiveIn()) {
-            if (worklist.get(liveVar) == null) {
-                worklist.put(liveVar, 1);
-            }
-        }
+        //for (String liveVar : this.getLiveIn()) {
+        //    if (worklist.get(liveVar) == null) {
+        //        worklist.put(liveVar, 1);
+        //    }
+        //}
         HashMap<String, Integer> out = new HashMap<>();
         int max_use = 0;
         String max_var = "";
@@ -620,14 +619,14 @@ public class BasicBlock {
             start = 1;
         }
 
-        for (String virtReg : this.getVarUseSet().keySet()) {
-            int regno = this.getRegMap().get(virtReg);
-            if (regno >= 0 && regno <= 7) {
-                String pReg = "$t" + regno;
-                int stackOff = stackMap.get(virtReg);
-                ps.println("    lw " + pReg + ", -" + stackOff + "($fp)");
-            } // if our virtual register was spilled it will be loaded from memory when needed.
-        }
+        //for (String virtReg : this.getVarUseSet().keySet()) {
+        //    int regno = this.getRegMap().get(virtReg);
+        //    if (regno >= 0 && regno <= 7) {
+        //        String pReg = "$t" + regno;
+        //        int stackOff = stackMap.get(virtReg);
+        //        ps.println("    lw " + pReg + ", -" + stackOff + "($fp)");
+        //    } // if our virtual register was spilled it will be loaded from memory when needed.
+        //}
         
         
         IRInstruction final_instr = null;
@@ -644,16 +643,16 @@ public class BasicBlock {
                 gAlloc.printInstruction(instr, this.func);
             }
         }        
-            for (String virtReg : this.liveOut) {
-                if (this.getVarDefs().contains(virtReg)) {
-                    int regno = this.getRegMap().get(virtReg);
-                    if (regno >= 0 && regno <= 7) {
-                        String pReg = "$t" + regno;
-                        int stackOff = stackMap.get(virtReg);
-                        ps.println("    sw " + pReg + ", -" + stackOff + "($fp)");
-                    } // if our virtual register was spilled then it should already have been written to memory.
-                }
-            }
+            //for (String virtReg : this.liveOut) {
+            //    if (this.getVarDefs().contains(virtReg)) {
+            //        int regno = this.getRegMap().get(virtReg);
+            //        if (regno >= 0 && regno <= 7) {
+            //            String pReg = "$t" + regno;
+            //            int stackOff = stackMap.get(virtReg);
+            //            ps.println("    sw " + pReg + ", -" + stackOff + "($fp)");
+            //        } // if our virtual register was spilled then it should already have been written to memory.
+            //    }
+            //}
         if (final_instr != null) {
             gAlloc.printInstruction(final_instr, this.func);
         }

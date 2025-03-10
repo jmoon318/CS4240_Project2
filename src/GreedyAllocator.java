@@ -420,7 +420,7 @@ public class GreedyAllocator {
 
                 ps.println("    lw " + val_asm + ", 0($t9)");
                 if (spill) {
-                    ps.println("    sw $t8, - " + val_off + "($fp)");
+                    ps.println("    sw $t8, -" + val_off + "($fp)");
                 }
                 break;
 

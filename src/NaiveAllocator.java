@@ -115,6 +115,7 @@ public class NaiveAllocator {
         }
         
         local_size += arg_size;
+        function.local_size = local_size;
 
 
         ps.print(function.name);
@@ -165,13 +166,14 @@ public class NaiveAllocator {
         if (function.name == "main") {
             ps.println("    li $v0, 10");
             ps.println("    syscall");
+        } else {
+            ps.println("    lw   $ra, 0($sp)");
+            ps.println("    lw   $fp, 0($fp)");
+            ps.println("    addi $sp, $sp, 4");
+            ps.println("    addi $sp, $sp, " + local_size);
+            ps.println("    addi $sp, $sp, 4");
         }
-        ps.println("    lw   $ra, 0($sp)");
-        ps.println("    addi $sp, $sp, 4");
-        ps.println("    addi $sp, $sp, " + local_size);
 
-        ps.println("    lw   $fp, 0($sp)");
-        ps.println("    addi $sp, $sp, 4");
     }
 
     public void printInstruction(IRFunction c_function, IRInstruction instruction, HashMap<String, Integer> stackMap) {
@@ -259,6 +261,19 @@ public class NaiveAllocator {
 
             case "return":
                 // ps.println("    lw $ra, 32($sp)");
+                if (operands.length >= 1) {
+                    if (isNumeric(operands[0].getValue())) {
+                        ps.println("    li $v0, " + operands[0].getValue());
+                    } else {
+                        ps.println("    lw $v0, -" + stackMap.get(operands[0].getValue()) + "($fp)");
+                    }
+                }
+                
+                ps.println("    lw   $ra, 0($sp)");
+                ps.println("    lw $fp, 0($fp)");
+                ps.println("    addi $sp, $sp, 4");
+                ps.println("    addi $sp, $sp, " + c_function.local_size);
+                ps.println("    addi $sp, $sp, 4");
                 ps.println("    jr $ra");
                 break;
 
@@ -353,8 +368,8 @@ public class NaiveAllocator {
                     ps.println("    jal " + functionName);
                     if (dest1 != null) {
                         // String reg = getRegister(dest1);
-                        ps.println("    move $t0, $v0");
-                        ps.println("    sw $t0, -" + stackMap.get(dest1) + "($fp)");
+                        //ps.println("    move $t0, $v0");
+                        ps.println("    sw $v0, -" + stackMap.get(dest1) + "($fp)");
                     }
 
                     ps.println("    addi $sp, $sp, " + stackArgOffset);
