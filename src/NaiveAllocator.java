@@ -296,8 +296,8 @@ public class NaiveAllocator {
                     ps.println("    syscall");
 
                     if (dest1 != null) {
-                        ps.println("    move $t0, $v0");
-                        ps.println("    sw $t0, -" + stackMap.get(dest1) + "($fp)");
+                        //ps.println("    move $t0, $v0");
+                        ps.println("    sw $v0, -" + stackMap.get(dest1) + "($fp)");
                     }
                 }
 
@@ -307,8 +307,8 @@ public class NaiveAllocator {
                     ps.println("    syscall");
 
                     if (dest1 != null) {
-                        ps.println("    move $t0, $v0");
-                        ps.println("    sw $t0, -" + stackMap.get(dest1) + "($fp)");
+                        //ps.println("    move $t0, $v0");
+                        ps.println("    sw $v0, -" + stackMap.get(dest1) + "($fp)");
                     }
                 }
 

@@ -53,6 +53,8 @@ public class MIPSInterpreter {
     private BufferedReader inputReader;
     private boolean debug;
 
+    private int lw;
+
     public MIPSInterpreter() {
         this(false);
     }
@@ -122,7 +124,7 @@ public class MIPSInterpreter {
                     if (go && stopLabel.equals(inst.label)) {
                         go = false;
                     } else {
-                        //System.out.println("executing instrs: " + program.instructions + ", pc: " + pc);
+                        //System.out.println("executing instrs: " + inst + " with first op: " + inst.operands.get(0) + ", pc: " + pc);
                         execute(inst);
                     }
                 } catch (IllegalReadException e) {
@@ -332,7 +334,7 @@ public class MIPSInterpreter {
             case LW:
                 dest = inst.getWrite();
                 addr = (Addr)inst.operands.get(1);
-
+                this.lw++;
                 memData = readMemInt(addrVal(addr));
                 writeRegister(dest.name, memData);
                 pc += 4;
@@ -423,7 +425,6 @@ public class MIPSInterpreter {
             case JR:
                 rs = inst.getReads()[0];
                 pc = readIntRegister(rs.name);
-
                 return;
             case SYSCALL:
                 switch (readIntRegister("$v0")) {
@@ -1017,5 +1018,7 @@ public class MIPSInterpreter {
         }
 
         interpreter.run(args[args.length - 1]);
+        System.out.println("lw executed: " + interpreter.lw + " times");
     }
+
 }

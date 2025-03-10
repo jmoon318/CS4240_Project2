@@ -1,0 +1,54 @@
+#start_function
+int tiger_ir_test():
+int-list: a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, result
+float-list:
+    assign, a, 1
+    assign, b, 2
+    assign, c, 3
+    assign, d, 4
+    assign, e, 5
+    assign, f, 6
+    assign, g, 7
+    assign, h, 8
+    assign, i, 9
+    assign, j, 10
+    assign, k, 11
+    assign, l, 12
+    assign, m, 13
+    assign, n, 14
+    assign, o, 15
+    assign, p, 16
+    assign, q, 17
+    assign, r, 18
+    assign, s, 19
+    assign, t, 20
+    add, result, a, b
+    sub, result, result, c
+    mult, result, result, d
+    div, result, result, e
+    add, result, result, f
+    mult, result, result, g
+    mult, result, result, h
+    add, result, result, i
+    sub, result, result, j
+    div, result, result, k
+    add, result, result, l
+    sub, result, result, m
+    mult, result, result, n
+    add, result, result, o
+    mult, result, result, p
+    sub, result, result, q
+    add, result, result, r
+    mult, result, result, s
+    add, result, result, t
+    return, result
+#end_function
+
+#start_function
+void main():
+int-list: res
+float-list:
+    callr, res, tiger_ir_test
+    call, puti, res
+    call, putc, 10
+#end_function

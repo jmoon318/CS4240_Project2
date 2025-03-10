@@ -642,17 +642,19 @@ public class BasicBlock {
             } else {
                 gAlloc.printInstruction(instr, this.func);
             }
-        }        
-            //for (String virtReg : this.liveOut) {
-            //    if (this.getVarDefs().contains(virtReg)) {
-            //        int regno = this.getRegMap().get(virtReg);
-            //        if (regno >= 0 && regno <= 7) {
-            //            String pReg = "$t" + regno;
-            //            int stackOff = stackMap.get(virtReg);
-            //            ps.println("    sw " + pReg + ", -" + stackOff + "($fp)");
-            //        } // if our virtual register was spilled then it should already have been written to memory.
-            //    }
-            //}
+        }
+
+        //for (String virtReg : this.liveOut) {
+        //    if (this.getVarDefs().contains(virtReg)) {
+        //        int regno = this.getRegMap().get(virtReg);
+        //        if (regno >= 0 && regno <= 7) {
+        //            String pReg = "$t" + regno;
+        //            int stackOff = stackMap.get(virtReg);
+        //            ps.println("    sw " + pReg + ", -" + stackOff + "($fp)");
+        //        } // if our virtual register was spilled then it should already have been written to memory.
+        //    }
+        //}
+
         if (final_instr != null) {
             gAlloc.printInstruction(final_instr, this.func);
         }

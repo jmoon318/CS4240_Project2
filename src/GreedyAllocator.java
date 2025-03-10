@@ -206,11 +206,11 @@ public class GreedyAllocator {
                 }
                 
                 ps.println("    lw   $ra, 0($sp)");
+                ps.println("    lw   $fp, 0($fp)");
                 ps.println("    addi $sp, $sp, 4");
                 if (func.local_size > 0) {
                     ps.println("    addi $sp, $sp, " + func.local_size);
                 }
-                ps.println("    lw   $fp, 0($sp)");
                 ps.println("    addi $sp, $sp, 4");
                 ps.println("    jr $ra");
                 break;
@@ -329,6 +329,9 @@ public class GreedyAllocator {
                         // String reg = getRegister(dest1);
                         //ps.println("    move $t0, $v0");
                         ps.println("    sw $v0, -" + stackMap.get(dest1) + "($fp)");
+                        if (!getRegister(dest1).equals("")) {
+                            ps.println("    move " + getRegister(dest1) + ", $v0");
+                        }
                     }
                     if (stackArgOffset > 0) {
                         ps.println("    addi $sp, $sp, " + stackArgOffset);

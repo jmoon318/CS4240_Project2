@@ -27,6 +27,7 @@ public class MakeASM {
             allocator.NaivePrintProgram(program);
         }
         if (args[1].equals("--greedy")) {
+            System.out.println(".text");
             for (IRFunction func : program.functions) {
                 // System.out.println("Map for function: " + func.name);
                 //build the def/reach map for the whole function
@@ -164,11 +165,11 @@ public class MakeASM {
         }
 
         ps.println("    lw   $ra, 0($sp)");
+        ps.println("    lw   $fp, 0($fp)");
         ps.println("    addi $sp, $sp, 4");
         if (local_size > 0) {
             ps.println("    addi $sp, $sp, " + local_size);
         }
-        ps.println("    lw   $fp, 0($sp)");
         ps.println("    addi $sp, $sp, 4");
 
         if (func.name.equals("main")) {
